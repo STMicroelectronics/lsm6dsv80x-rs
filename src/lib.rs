@@ -749,8 +749,25 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T> {
     /// Set the Gyroscope full-scale.
     pub fn gy_full_scale_set(&mut self, val: GyFullScale) -> Result<(), Error<B::Error>> {
         let mut ctrl6 = Ctrl6::read(self)?;
+        let mut ctrl2 = Ctrl2::read(self)?;
+        let prev_ctrl2 = ctrl2.clone();
+
+        // For the correct operation of the device, the user must set a
+        // configuration from 001 to 101 when the gyroscope is in power-down mode.
+        if ctrl2.odr_g() != (DataRate::Off as u8) {
+            ctrl2.set_odr_g(DataRate::Off as u8);
+            ctrl2.write(self)?;
+        }
+
         ctrl6.set_fs_g((val as u8) & 0xf);
-        ctrl6.write(self)
+        ctrl6.write(self)?;
+
+        // restore previous odr set
+        if prev_ctrl2.odr_g() != (DataRate::Off as u8) {
+            prev_ctrl2.write(self)?
+        }
+
+        Ok(())
     }
 
     /// Get the actual Gyroscope full-scale.
