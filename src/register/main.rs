@@ -1481,9 +1481,9 @@ pub struct EmbFuncCfg {
 #[named_register(address = Reg::XlHgXOfsUsr, access_type = Lsm6dsv80x, generics = 2)]
 #[derive(Default)]
 pub struct XlHgXYZOfsUsr {
-    pub x: u8,
-    pub y: u8,
-    pub z: u8,
+    pub x: i8,
+    pub y: i8,
+    pub z: i8,
 }
 
 /*
