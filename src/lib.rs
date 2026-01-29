@@ -1754,7 +1754,9 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T> {
     ///
     /// When this counter reaches the threshold, the counter is reset and the interrupt flag is set to 1.
     pub fn fifo_batch_counter_threshold_set(&mut self, val: u16) -> Result<(), Error<B::Error>> {
-        CounterBdr::new().with_cnt_bdr_th(val).write(self)
+        let mut cnt = CounterBdr::read(self)?;
+        cnt.set_cnt_bdr_th(val);
+        cnt.write(self)
     }
 
     /// Get the actual threshold for the internal counter of batch events.

@@ -2176,7 +2176,7 @@ pub enum FiltAntiSpike {
 
 /// Gyroscope low-pass filter (LPF1) bandwidth selection.
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Default, TryFrom)]
+#[derive(Clone, Copy, PartialEq, Default, Debug, TryFrom)]
 #[try_from(repr)]
 pub enum FiltLpBandwidth {
     /// Ultra light bandwidth (default).
