@@ -301,6 +301,7 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
     /// Value ranges depend on the USR_OFF_W bit in CTRL9:
     /// - If USR_OFF_W = 1: range is ±15.875 mg with 0.125 mg precision.
     /// - If USR_OFF_W = 0: range is ±0.9921875 mg with 0.0078125 mg precision.
+    ///
     /// The USR_OFF_W bit is automatically enabled based on the input values (precision is shared across
     /// all axes).
     pub async fn xl_offset_mg_set(&mut self, val: XlOffsetMg) -> Result<(), Error<B::Error>> {
@@ -586,46 +587,40 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
     ) -> Result<(), Error<B::Error>> {
         let xl_ha = ((xl_odr as u8) >> 4) & 0xF;
 
-        // Table 9 of AN6281
-        // 1.875 Hz allowed only in Low-power modes
-        if xl_odr == DataRate::_1_875hz
-            && xl_mode != XlMode::LowPower2Avg
-            && xl_mode != XlMode::LowPower4Avg
-            && xl_mode != XlMode::LowPower8Avg
-        {
-            return Err(Error::InvalidConfiguration);
-        }
-        // 7.5 Hz allowed only in normal or high-performance modes
-        else if xl_odr == DataRate::_7_5hz
-            && xl_mode != XlMode::Normal
-            && xl_mode != XlMode::HighPerformance
-        {
-            return Err(Error::InvalidConfiguration);
-        }
-        // if odr_xl bits has 4th bit enabled, low-power modes are not allowed
-        else if
-        // odr >= 480 and low-power and normal mode
-        (xl_odr as u8 & 0x8) != 0
-            && (xl_mode as u8 & 0x4) != 0
-            && (xl_mode != XlMode::Normal
-                || xl_odr == DataRate::_3840hz
-                || xl_odr == DataRate::_7680hz)
-        {
-            return Err(Error::InvalidConfiguration);
-        }
-        // Section 3.5 of AN6281
-        if xl_mode == XlMode::OdrTriggered
-            && (xl_odr == DataRate::_1_875hz
-                || xl_odr == DataRate::_7_5hz
-                || xl_odr == DataRate::_7680hz)
-        {
-            return Err(Error::InvalidConfiguration);
-        }
+        let is_1_875hz = xl_odr == DataRate::_1_875hz;
+        let is_7_5hz = xl_odr == DataRate::_7_5hz;
+        let is_3840hz = xl_odr == DataRate::_3840hz;
+        let is_7680hz = xl_odr == DataRate::_7680hz;
 
-        // if odr is choosed as High-accuracy value, mode should be set in HAODR mode
-        if (xl_ha != 0 && xl_mode != XlMode::HighAccuracyOdr)
-            || (xl_ha == 0 && xl_mode == XlMode::HighAccuracyOdr)
-        {
+        let is_low_power_avg = matches!(
+            xl_mode,
+            XlMode::LowPower2Avg | XlMode::LowPower4Avg | XlMode::LowPower8Avg
+        );
+        let is_normal_or_hp = matches!(xl_mode, XlMode::Normal | XlMode::HighPerformance);
+
+        let odr_has_4th_bit = (xl_odr as u8 & 0x8) != 0;
+        let mode_has_3rd_bit = (xl_mode as u8 & 0x4) != 0;
+
+        // Table 9 of AN6281
+        // 1.875 Hz allowed only in low-power avg modes
+        let invalid_1_875hz = is_1_875hz && !is_low_power_avg;
+
+        // 7.5 Hz allowed only in normal or high-performance modes
+        let invalid_7_5hz = is_7_5hz && !is_normal_or_hp;
+
+        // If odr_xl bits has 4th bit enabled, low-power modes are not allowed
+        let invalid_high_odr_low_power = odr_has_4th_bit
+            && mode_has_3rd_bit
+            && (xl_mode != XlMode::Normal || is_3840hz || is_7680hz);
+
+        // Section 3.5 of AN6281
+        let invalid_odr_triggered =
+            xl_mode == XlMode::OdrTriggered && (is_1_875hz || is_7_5hz || is_7680hz);
+
+        let invalid_config =
+            invalid_1_875hz || invalid_7_5hz || invalid_high_odr_low_power || invalid_odr_triggered;
+
+        if invalid_config {
             return Err(Error::InvalidConfiguration);
         }
 
@@ -766,7 +761,7 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
         let mut ctrl1_xl_hg = Ctrl1XlHg::read(self).await?;
 
         let prev_mode = ctrl1.op_mode_xl();
-        let ctrl1_xl_hg_prev = ctrl1_xl_hg.clone();
+        let ctrl1_xl_hg_prev = ctrl1_xl_hg;
 
         // Enabling/disabling HAODR mode require to have all sensors in power-down mode
         ctrl1.set_odr_xl(DataRate::Off as u8);
@@ -1051,7 +1046,7 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
     pub async fn gy_full_scale_set(&mut self, val: GyFullScale) -> Result<(), Error<B::Error>> {
         let mut ctrl6 = Ctrl6::read(self).await?;
         let mut ctrl2 = Ctrl2::read(self).await?;
-        let prev_ctrl2 = ctrl2.clone();
+        let prev_ctrl2 = ctrl2;
 
         // For the correct operation of the device, the user must set a
         // configuration from 001 to 101 when the gyroscope is in power-down mode.
@@ -1312,7 +1307,6 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
             wakeup: md1_cfg.int1_wu(),
             freefall: md1_cfg.int1_ff(),
             sleep_change: md1_cfg.int1_sleep_change(),
-            ..Default::default()
         };
 
         Ok(val)
@@ -1371,7 +1365,6 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
             freefall: md2_cfg.int2_ff(),
             sleep_change: md2_cfg.int2_sleep_change(),
             drdy_temp: ctrl4.int2_drdy_temp(),
-            ..Default::default()
         };
 
         Ok(route)
@@ -1449,7 +1442,6 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T, MainBank> {
             drdy_hg_xl: ctrl7.int2_drdy_xl_hg(),
             hg_wakeup: hg_func.int2_hg_wu(),
             hg_shock_change: reg_shock.int2_hg_shock_change(),
-            ..Default::default()
         };
 
         Ok(val)
