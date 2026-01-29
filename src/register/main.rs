@@ -112,21 +112,21 @@ pub enum Reg {
 #[cfg_attr(feature = "bit_order_msb", bitfield(u8, order = Msb))]
 #[cfg_attr(not(feature = "bit_order_msb"), bitfield(u8, order = Lsb))]
 pub struct FuncCfgAccess {
-    #[bits(2, access = RO)]
+    #[bits(2, access = RO, default = 0)]
     not_used1: u8,
     /// Software power-on reset. Default: 0.
-    #[bits(1)]
+    #[bits(1, default = 0)]
     pub sw_por: u8,
     /// Enables FSM control of CTRL registers. Default: 0.
-    #[bits(1)]
+    #[bits(1, default = 0)]
     pub fsm_wr_ctrl_en: u8,
-    #[bits(2, access = RO)]
+    #[bits(2, access = RO, default = 0)]
     not_used0: u8,
     /// Enables sensor hub register access. Default: 0.
-    #[bits(1)]
+    #[bits(1, default = 0)]
     pub shub_reg_access: u8,
     /// Enables embedded functions register access. Default: 0.
-    #[bits(1)]
+    #[bits(1, default = 0)]
     pub emb_func_reg_access: u8,
 }
 
@@ -138,17 +138,17 @@ pub struct FuncCfgAccess {
 #[cfg_attr(not(feature = "bit_order_msb"), bitfield(u8, order = Lsb))]
 pub struct PinCtrl {
     /// Drive strength for interrupt pads. Default: 11 (highest strength for VDDIO < 2 V).
-    #[bits(2)]
+    #[bits(2, default = 0b11)]
     pub io_pad_strength: u8,
-    #[bits(3, access = RO)]
+    #[bits(3, access = RO, default = 0)]
     not_used0: u8,
     /// Selects action after "reset whole chip" I3C pattern; 1 = global reset (POR reset). Default: 1.
-    #[bits(1)]
+    #[bits(1, default = 1)]
     pub ibhr_por_en: u8,
     /// Enables pull-up on SDO pin. Default: 0 (disabled).
-    #[bits(1)]
+    #[bits(1, default = 0)]
     pub sdo_pu_en: u8,
-    #[bits(1, access = RO)]
+    #[bits(1, access = RO, default = 0)]
     not_used1: u8,
 }
 
@@ -403,7 +403,7 @@ pub struct Int2Ctrl {
 #[cfg_attr(not(feature = "bit_order_msb"), bitfield(u8, order = Lsb))]
 pub struct WhoAmI {
     /// Device ID; fixed value 0x73.
-    #[bits(8)]
+    #[bits(8, default = 0x73)]
     pub id: u8,
 }
 /// CTRL1 (0x10)
@@ -450,19 +450,19 @@ pub struct Ctrl2 {
 #[cfg_attr(not(feature = "bit_order_msb"), bitfield(u8, order = Lsb))]
 pub struct Ctrl3 {
     /// Software reset; resets all control registers to default, auto-cleared
-    #[bits(1)]
+    #[bits(1, default = 0)]
     pub sw_reset: u8,
     /// Reserved bit, read-only
-    #[bits(1, access = RO)]
+    #[bits(1, access = RO, default = 0)]
     not_used0: u8,
     /// Register address auto-increment during multi-byte access (I2C, SPI, I3C)
-    #[bits(1)]
+    #[bits(1, default = 1)]
     pub if_inc: u8,
     /// Reserved bits, read-only
     #[bits(3, access = RO)]
     not_used1: u8,
     /// Block data update; output registers not updated until LSB and MSB read
-    #[bits(1)]
+    #[bits(1, default = 1)]
     pub bdu: u8,
     /// Reboots memory content; auto-cleared
     #[bits(1)]
@@ -1184,7 +1184,7 @@ pub struct InactivityDur {
     #[bits(2)]
     pub inact_dur: u8,
     /// Selects ODR_XL target during inactivity (2 bits)
-    #[bits(2)]
+    #[bits(2, default = 0b01)]
     pub xl_inact_odr: u8,
     /// Weight of 1 LSB of wake-up and activity/inactivity threshold (3 bits)
     #[bits(3)]

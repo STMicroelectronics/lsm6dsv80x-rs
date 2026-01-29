@@ -2365,12 +2365,12 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T> {
 
     /// Set the High-g accelerometer sensitivity value register for FSM and MLC.
     pub fn xl_hg_sensitivity_set(&mut self, val: u16) -> Result<(), Error<B::Error>> {
-        XlHgSensitivity(val).write(self)
+        XlHgSensitivity::from_bits(val).write(self)
     }
 
     /// Get the High-g accelerometer sensitivity value register for FSM and MLC.
     pub fn xl_hg_sensitivity_get(&mut self) -> Result<u16, Error<B::Error>> {
-        XlHgSensitivity::read(self).map(|reg| reg.0)
+        XlHgSensitivity::read(self).map(|reg| reg.xl_hg())
     }
 
     /// Set FSM long counter timeout.
@@ -2542,7 +2542,7 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T> {
     /// Default value is 0x3C00 (when using an external magnetometer this value
     /// corresponds to 1 gauss/LSB).
     pub fn mlc_ext_sens_sensitivity_set(&mut self, val: u16) -> Result<(), Error<B::Error>> {
-        MlcExtSensitivity(val).write(self)
+        MlcExtSensitivity::new().with_mlc_ext(val).write(self)
     }
 
     /// Get the External sensor sensitivity value register for the Machine Learning Core.
@@ -2553,7 +2553,7 @@ impl<B: BusOperation, T: DelayNs> Lsm6dsv80x<B, T> {
     /// Default value is 0x3C00 (when using an external magnetometer this value
     /// corresponds to 1 gauss/LSB).
     pub fn mlc_ext_sens_sensitivity_get(&mut self) -> Result<u16, Error<B::Error>> {
-        MlcExtSensitivity::read(self).map(|reg| reg.0)
+        MlcExtSensitivity::read(self).map(|reg| reg.mlc_ext())
     }
 
     /// Set Threshold for 4D/6D function.
